@@ -1,15 +1,13 @@
 import java.io.*;
-import java.lang.reflect.Array;
 import java.net.*;
-import java.util.ArrayList;
 
 public class Client {
     Socket s;
     DataOutputStream dout;
     BufferedReader din;
 
-
     String [] serverList;
+    String [] latestJob;
 
     public Client(String host, int port){
         try{
@@ -29,9 +27,26 @@ public class Client {
 
     public String receiveResponse() throws IOException{
         String response = this.din.readLine();
+        String [] responseArray = response.split(" ");
 
-        if(response.length() > 0){
-            System.out.println("RCVD " + response);
+        System.out.println("RCVD " + response);
+
+        switch(responseArray[0]){
+            case "OK":
+                this.handleOK();
+                break;
+
+            case "JCPL":
+                this.queJobLoop();
+                break;
+
+            case "JOBN":
+                this.handleJOBN(response);
+                break;
+
+            case "DATA":
+                this.handleDATA(response);
+                break;
         }
     
         return response;
@@ -55,38 +70,72 @@ public class Client {
     }
 
 
-    public String getServerState(String type) throws IOException{
+    public String queJobLoop() throws IOException{
         System.out.println("\nNext Job: ");
+        this.sendRequest("REDY");            
 
-        this.sendRequest("REDY");
-        String response = this.receiveResponse();
-        if(response.split(" ")[0].equals("JOBN")){
+        return this.receiveResponse();
+            
+    }
 
-            String [] JOBN = response.split(" ");
-            this.sendRequest(String.format("GETS %s %d %d %d", type, Integer.parseInt(JOBN[4]), Integer.parseInt(JOBN[5]), Integer.parseInt(JOBN[6])));
+    //Gets the largest server based on core count and returns a string
+    public String getLargestServer(String [] serverList) throws IOException{
+        String largestServer = "";
+        int largestCoreCount = 0;
 
-            String [] DATA = this.receiveResponse().split(" ");
-            this.serverList = new String[Integer.parseInt(DATA[1])];
-            this.sendRequest("OK");
-
-            for(int i = 0; i < serverList.length; i++){
-                this.serverList[i] = this.receiveResponse();
+        for(int i = 0; i < serverList.length; i ++){
+            if(Integer.parseInt(serverList[i].split(" ")[4]) > largestCoreCount){
+                largestCoreCount = Integer.parseInt(serverList[i].split(" ")[4]);
+                largestServer = serverList[i];
             }
-
-            this.sendRequest("OK");
-            this.receiveResponse();
-
-            this.sendRequest(String.format("SCHD %s %s %s", JOBN[2], this.serverList[0].split(" ")[0], this.serverList[0].split(" ")[1]));
         }
 
-        else{
-            this.sendRequest("OK");
+        System.out.println("Largest server: " + largestServer);
+        return largestServer;
+    }
+
+    public boolean handleOK() throws IOException{
+        return true;
+
+    }
+
+    public void handleDATA(String response) throws IOException{
+        String [] DATA = response.split(" ");
+
+        this.serverList = new String[Integer.parseInt(DATA[1])];
+        this.sendRequest("OK");
+
+        System.out.println("----------------------------------------------------------------");
+        for(int i = 0; i < serverList.length; i++){
+            this.serverList[i] = this.receiveResponse();
         }
+        System.out.println("----------------------------------------------------------------");
 
         
-        response = this.receiveResponse();
-        return response;
-            
+        String largestServer = this.getLargestServer(this.serverList);
+
+        System.out.println("----------------------------------------------------------------");
+
+        this.sendRequest("OK");
+        this.receiveResponse();
+
+        this.sendRequest(String.format("SCHD %s %s %s", this.latestJob[2], largestServer.split(" ")[0], largestServer.split(" ")[1]));
+        this.receiveResponse();
+    }
+
+    public void handleJOBN(String response) throws IOException{
+        this.latestJob = response.split(" ");
+        this.sendRequest(String.format("GETS Capable %d %d %d", Integer.parseInt(this.latestJob[4]), Integer.parseInt(this.latestJob[5]), Integer.parseInt(this.latestJob[6])));
+        this.receiveResponse();
+    }
+
+    public void handleJCPL(String response) throws IOException{
+        System.out.println("Response is JCPL");
+
+        while(response.equals("JCPL")){
+            this.sendRequest("OK");
+            response = this.receiveResponse().split(" ")[0];
+        } 
     }
 
     public static void main(String[] args) throws IOException {
@@ -95,9 +144,8 @@ public class Client {
 
         myClient.handshake();
 
-        while(!response.equals("NONE")){
-        
-            response = myClient.getServerState("Capable");
+        while(!response.equals("NONE")){        
+            response = myClient.queJobLoop();
         }
         myClient.closeConnection();
     }
