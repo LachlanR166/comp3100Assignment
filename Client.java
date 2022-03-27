@@ -1,3 +1,9 @@
+/*
+Project: Stage 1
+Class: Distributed Systems - COMP3100
+Author: Lachlan Rigg - 45209715
+*/
+
 import java.io.*;
 import java.net.*;
 
@@ -9,6 +15,9 @@ public class Client {
     String [] serverList;
     String [] latestJob;
 
+    int successfulJobs = 0;
+
+    //Constructor for Client class
     public Client(String host, int port){
         try{
             this.s = new Socket(host, port);
@@ -20,22 +29,21 @@ public class Client {
         }
     }
 
+    //Function to send requests to the server
     public void sendRequest(String request) throws IOException{
         this.dout.write((request + "\n").getBytes());
         System.out.println("SENT " + request);
     }
 
+    //Function to receive all responses from the server
     public String receiveResponse() throws IOException{
         String response = this.din.readLine();
         String [] responseArray = response.split(" ");
 
         System.out.println("RCVD " + response);
 
+        //Switch case to determine what the correct response should be
         switch(responseArray[0]){
-            case "OK":
-                this.handleOK();
-                break;
-
             case "JCPL":
                 this.queJobLoop();
                 break;
@@ -53,6 +61,7 @@ public class Client {
 
     }
 
+    //Function to close socket connections and exit the program
     public void closeConnection() throws IOException{
         this.sendRequest("QUIT");
         this.receiveResponse();
@@ -62,6 +71,7 @@ public class Client {
         System.exit(0);
     }
 
+    //Function that handshakes with the ds-sim server
     public void handshake() throws IOException{
         this.sendRequest("HELO");
         this.receiveResponse();
@@ -70,6 +80,7 @@ public class Client {
     }
 
 
+    //Function that starts the next job que
     public String queJobLoop() throws IOException{
         System.out.println("\nNext Job: ");
         this.sendRequest("REDY");            
@@ -94,11 +105,7 @@ public class Client {
         return largestServer;
     }
 
-    public boolean handleOK() throws IOException{
-        return true;
-
-    }
-
+    //Function to handle a DATA response and split the resulting responses into a server list
     public void handleDATA(String response) throws IOException{
         String [] DATA = response.split(" ");
 
@@ -121,17 +128,21 @@ public class Client {
 
         this.sendRequest(String.format("SCHD %s %s %s", this.latestJob[2], largestServer.split(" ")[0], largestServer.split(" ")[1]));
         this.receiveResponse();
+        this.successfulJobs++;
     }
 
+    //Function to handle JOBN response, then GETS to find capable servers
     public void handleJOBN(String response) throws IOException{
         this.latestJob = response.split(" ");
         this.sendRequest(String.format("GETS Capable %d %d %d", Integer.parseInt(this.latestJob[4]), Integer.parseInt(this.latestJob[5]), Integer.parseInt(this.latestJob[6])));
         this.receiveResponse();
     }
 
+    //Function to handle JCPL
     public void handleJCPL(String response) throws IOException{
         System.out.println("Response is JCPL");
 
+        //While response does not equal JCPL, keep sending "OK"
         while(response.equals("JCPL")){
             this.sendRequest("OK");
             response = this.receiveResponse().split(" ")[0];
@@ -144,9 +155,10 @@ public class Client {
 
         myClient.handshake();
 
-        while(!response.equals("NONE")){        
+        while(!response.equals("NONE")){
             response = myClient.queJobLoop();
         }
+        System.out.println("\nNumber of successful jobs: " + myClient.successfulJobs);
         myClient.closeConnection();
     }
 }
