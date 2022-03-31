@@ -12,10 +12,13 @@ public class Client {
     DataOutputStream dout;
     BufferedReader din;
 
-    String [] serverList;
-    String [] latestJob;
+    String[] latestJob;
+    String largestServerType = "";
+    int largestCoreCount = 0;
+    int noOfServers = 0;
+    int currentServerIndex = 0;
 
-    int successfulJobs = 0;
+    boolean hasFoundLargestServerType = false;
 
     //Constructor for Client class
     public Client(String host, int port){
@@ -32,7 +35,7 @@ public class Client {
     //Function to send requests to the server
     public void sendRequest(String request) throws IOException{
         this.dout.write((request + "\n").getBytes());
-        System.out.println("SENT " + request);
+        //System.out.println("SENT " + request);
     }
 
     //Function to receive all responses from the server
@@ -40,20 +43,29 @@ public class Client {
         String response = this.din.readLine();
         String [] responseArray = response.split(" ");
 
-        System.out.println("RCVD " + response);
+        //System.out.println("RCVD " + response);
 
         //Switch case to determine what the correct response should be
         switch(responseArray[0]){
+
             case "JCPL":
                 this.queJobLoop();
                 break;
 
             case "JOBN":
-                this.handleJOBN(response);
+                this.latestJob = responseArray;
+                this.scheduler();
                 break;
 
             case "DATA":
-                this.handleDATA(response);
+                this.findLargestServerType(response);
+                break;
+
+            case "NONE":
+                this.closeConnection();
+                break;
+                
+            default:
                 break;
         }
     
@@ -82,72 +94,68 @@ public class Client {
 
     //Function that starts the next job que
     public String queJobLoop() throws IOException{
-        System.out.println("\nNext Job: ");
         this.sendRequest("REDY");            
 
         return this.receiveResponse();
             
     }
 
-    //Gets the largest server based on core count and returns a string
-    public String getLargestServer(String [] serverList) throws IOException{
-        String largestServer = "";
-        int largestCoreCount = 0;
-
-        for(int i = 0; i < serverList.length; i ++){
-            if(Integer.parseInt(serverList[i].split(" ")[4]) > largestCoreCount){
-                largestCoreCount = Integer.parseInt(serverList[i].split(" ")[4]);
-                largestServer = serverList[i];
-            }
-        }
-
-        System.out.println("Largest server: " + largestServer);
-        return largestServer;
-    }
-
-    //Function to handle a DATA response and split the resulting responses into a server list
-    public void handleDATA(String response) throws IOException{
+    //Function that runs once and finds the largest server type and number of servers belonging to that type
+    public void findLargestServerType(String response) throws IOException{
         String [] DATA = response.split(" ");
 
-        this.serverList = new String[Integer.parseInt(DATA[1])];
         this.sendRequest("OK");
+        //Iterate through all responses from the server
+        for(int i = 0; i < Integer.parseInt(DATA[1]); i++){
+            //Receive a response
+            response = this.receiveResponse();
 
-        System.out.println("----------------------------------------------------------------");
-        for(int i = 0; i < serverList.length; i++){
-            this.serverList[i] = this.receiveResponse();
-        }
-        System.out.println("----------------------------------------------------------------");
+            //Split into an array to access individual elements
+            String[] responseArray = response.split(" ");
 
+            //If the core counts are the same and the server types are the same then increase number of server by one
+            if((Integer.parseInt(responseArray[4]) == this.largestCoreCount) && (responseArray[0].equals(this.largestServerType))){
+                this.noOfServers++;
+            }
+
+            //Else If the core count of the current server is larger than the previous and the server type differs; then update it
+            else if(Integer.parseInt(responseArray[4]) > this.largestCoreCount){
+                this.largestServerType = responseArray[0];
+                this.largestCoreCount = Integer.parseInt(responseArray[4]);
+                this.noOfServers = 0;
         
-        String largestServer = this.getLargestServer(this.serverList);
-
-        System.out.println("----------------------------------------------------------------");
-
-        this.sendRequest("OK");
-        this.receiveResponse();
-
-        this.sendRequest(String.format("SCHD %s %s %s", this.latestJob[2], largestServer.split(" ")[0], largestServer.split(" ")[1]));
-        this.receiveResponse();
-        this.successfulJobs++;
+            }
+        }
+        //Largest server type has been found so is set to true so it wont run again
+        this.hasFoundLargestServerType = true;
     }
 
-    //Function to handle JOBN response, then GETS to find capable servers
-    public void handleJOBN(String response) throws IOException{
-        this.latestJob = response.split(" ");
-        this.sendRequest(String.format("GETS Capable %d %d %d", Integer.parseInt(this.latestJob[4]), Integer.parseInt(this.latestJob[5]), Integer.parseInt(this.latestJob[6])));
-        this.receiveResponse();
-    }
-
-    //Function to handle JCPL
-    public void handleJCPL(String response) throws IOException{
-        System.out.println("Response is JCPL");
-
-        //While response does not equal JCPL, keep sending "OK"
-        while(response.equals("JCPL")){
+    //Function to handle scheduler
+    public void scheduler() throws IOException{
+        
+        //If the largest server type has not yet been found
+        if(!hasFoundLargestServerType){
+            this.sendRequest("GETS All");
+            this.receiveResponse();
             this.sendRequest("OK");
-            response = this.receiveResponse().split(" ")[0];
-        } 
+            this.receiveResponse();
+        }  
+
+        this.sendRequest(String.format("SCHD %s %s %s", this.latestJob[2], this.largestServerType, this.currentServerIndex));
+
+        //If the current server index is greater than or equal to the number of servers then reset to zero
+        if(this.currentServerIndex >= this.noOfServers){
+            this.currentServerIndex = 0;
+        }
+
+        //Otherwise increase the current index by one
+        else{
+            this.currentServerIndex++;
+        }
+
+        this.receiveResponse();
     }
+
 
     public static void main(String[] args) throws IOException {
         Client myClient = new Client("localhost", 50000);
@@ -158,7 +166,6 @@ public class Client {
         while(!response.equals("NONE")){
             response = myClient.queJobLoop();
         }
-        System.out.println("\nNumber of successful jobs: " + myClient.successfulJobs);
-        myClient.closeConnection();
+
     }
 }
