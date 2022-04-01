@@ -1,5 +1,5 @@
 /*
-Project: Stage 1
+Project: Stage 1, S1 2022
 Class: Distributed Systems - COMP3100
 Author: Lachlan Rigg - 45209715
 */
