@@ -3,7 +3,6 @@ Project: Stage 2, S1 2022
 Class: Distributed Systems - COMP3100
 Author: Lachlan Rigg - 45209715
 */
-
 import java.io.*;
 import java.net.*;
 
@@ -17,17 +16,14 @@ public class Clientv2 {
     Algorithm algorithm = new Algorithm();
     boolean hasServerList = false;
 
-    //All algorithm types
-
     public static void main(String[] args) throws IOException {
-        //Create a new Client on localhost:50000
+        //Create a new Client on localhost:50000 and get the supplied algorithm type
         Clientv2 myClient = new Clientv2("localhost", 50000, args[0]);
 
         //Handshake between client and server
         myClient.handshake();
 
         while(true){
-
             myClient.sendRequest("REDY");
             myClient.responseController(myClient.receiveResponse());
         }
@@ -77,24 +73,23 @@ public class Clientv2 {
             case "JOBN":
                 this.latestJob = new JOBN(response);
                 switch(this.algorithm.name){
-                    case "lrr": //add multiple algo types to one line using OR:
+                    case "lrr":
                         if(!this.hasServerList){
-                            this.sendRequest("GETS All");
-                            this.responseController(this.receiveResponse());
-                            this.sendRequest("OK");
-                            this.receiveResponse();
+                            this.getServerData("All");
                         }
 
                         this.scheduleJob(this.algorithm.lrr.largestServerType, this.algorithm.lrr.nextServerIndex());
                         break;
                     
                     case "fc":
-                        this.sendRequest(String.format("GETS Capable %d %d %d", this.latestJob.core, this.latestJob.memory, this.latestJob.disk));
-                        this.responseController(this.receiveResponse());
-                        this.sendRequest("OK");
-                        this.receiveResponse();
-
+                        this.getServerData("Capable");
                         this.scheduleJob(this.algorithm.fc.serverType, this.algorithm.fc.serverID);
+                        break;
+                    
+                    case "ff":
+                        this.getServerData("Avail");
+
+                        this.scheduleJob(this.algorithm.ff.serverType, this.algorithm.ff.serverID);
                         break;
                     
                     default:
@@ -137,6 +132,10 @@ public class Clientv2 {
                         this.algorithm.fc = new FC(this, data);
                         break;
                     
+                    case "ff":
+                        this.algorithm.ff = new FF(this, data, latestJob);
+                        break;
+                    
                     default:
                         break;
                 }
@@ -149,6 +148,18 @@ public class Clientv2 {
 
     public void scheduleJob(String serverType, int serverID) throws IOException{
         this.sendRequest(String.format("SCHD %s %s %s", this.latestJob.jobID, serverType, serverID));
+        this.receiveResponse();
+    }
+
+    public void getServerData(String type) throws IOException{
+        if(type.equals("All")){
+            this.sendRequest("GETS All");
+        }
+        else{
+            this.sendRequest(String.format("GETS %s %d %d %d", type, this.latestJob.core, this.latestJob.memory, this.latestJob.disk));
+        }
+        this.responseController(this.receiveResponse());
+        this.sendRequest("OK");
         this.receiveResponse();
     }
 
