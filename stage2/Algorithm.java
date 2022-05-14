@@ -1,3 +1,10 @@
+/*
+Project: Stage 2, S1 2022
+Class: Distributed Systems - COMP3100
+Author: Lachlan Rigg - 45209715
+Module: Algorithm.java
+*/
+
 import java.io.IOException;
 
 public class Algorithm {
