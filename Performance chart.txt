@@ -1,0 +1,32 @@
+OTT:
+
+# actual simulation end time: 11002144, #jobs: 3000 (failed 0 times)
+# total #servers used: 416, avg util: 93.13% (ef. usage: 95.73%), total cost: $680,024.00
+# avg waiting time: 1297872, avg exec time: 96961, avg turnaround time: 1,394,833
+
+LRR:
+
+# actual simulation end time: 18371795, #jobs: 3000 (failed 0 times)
+# total #servers used: 10, avg util: 100.00% (ef. usage: 100.00%), total cost: $1,129,039.88
+# avg waiting time: 10015818, avg exec time: 96961, avg turnaround time: 10,112,779
+
+FC:
+
+# actual simulation end time: 87052778, #jobs: 3000 (failed 0 times)
+# total #servers used: 9, avg util: 100.00% (ef. usage: 100.00%), total cost: $673,967.88
+# avg waiting time: 27570403, avg exec time: 96961, avg turnaround time: 27,667,364
+
+FF:
+# actual simulation end time: 81523986, #jobs: 3000 (failed 0 times)
+# total #servers used: 416, avg util: 92.85% (ef. usage: 95.49%), total cost: $684,172.88
+# avg waiting time: 11242606, avg exec time: 96961, avg turnaround time: 11,339,567
+
+BF:
+# actual simulation end time: 81644461, #jobs: 3000 (failed 0 times)
+# total #servers used: 372, avg util: 92.32% (ef. usage: 95.66%), total cost: $677,852.12
+# avg waiting time: 11599334, avg exec time: 96961, avg turnaround time: 11,696,295
+
+WF:
+# actual simulation end time: 120664880, #jobs: 3000 (failed 0 times)
+# total #servers used: 10, avg util: 99.95% (ef. usage: 100.00%), total cost: $914,935.88
+# avg waiting time: 68141486, avg exec time: 96961, avg turnaround time: 68,238,447

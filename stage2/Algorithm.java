@@ -4,7 +4,7 @@ public class Algorithm {
     String name;
     LRR lrr;
     FC fc;
-    FF ff;
+    OTT ott;
 }
 
 //LARGEST ROUND ROBIN - LRR
@@ -75,29 +75,18 @@ class FC extends Algorithm{
     }
 }
 
-//FIRST FIT ALGORITHM - Currently not working as intended, consider deleting and using another algorithm
-class FF extends Algorithm{
+//OPTIMISED TURNAROUND TIME - Custom algorithm for optimised turnaround time
+class OTT extends Algorithm{
     String serverType = "";
     int serverID = 0;
-    boolean foundFirst = false;
+
     ServerList serverList = new ServerList();
 
-    public FF(Clientv2 client, DATA data, JOBN latestJob) throws IOException{
+    public OTT(Clientv2 client, DATA data, JOBN latestJob) throws IOException{
+        client.sendRequest("OK");
 
-        //Search all servers with Avail
-
-        //Choose the first server that satisfies:
-        //  1. Sufficient core count available for latestJob
-        //  2. Server state is Inactive/Active
-        
-        //Else search servers with Capable
-
-        //Choose the first server that satisfies:
-        //  1. Sufficient core count available for latestJob
-        //  2. Server state is Active/Booting 
-
+        //If the DATA received from GETS Avail is zero, then we need to use GETS Capable
         if(data.nRecs == 0){
-            client.sendRequest("OK");
             client.receiveResponse(); //This will be a "."
 
             client.sendRequest(String.format("GETS Capable %d %d %d", latestJob.core, latestJob.memory, latestJob.disk));
@@ -105,36 +94,79 @@ class FF extends Algorithm{
 
             client.sendRequest("OK");
 
+            //Iterate through the servers in the DATA response
             for(int i = 0; i < data.nRecs; i++){
                 String[] response = client.receiveResponse();
                 Server server = new Server(response);
 
                 this.serverList.addServer(server);
                 
-                if((server.core >= latestJob.core) && (!foundFirst)){
+                //If there is only one record then choose that
+                if(data.nRecs == 1){
                     this.serverType = server.serverType;
                     this.serverID = server.serverID;
-                    this.foundFirst = true;
                 }
             }
 
+            //Otherwise if serverType is still empty, acknowledge
             if(this.serverType.equals("")){
-                this.serverType = this.serverList.getServer(0).serverType;
-                this.serverID = this.serverList.getServer(0).serverID;
+                client.sendRequest("OK");
+                client.receiveResponse(); //This will be a "."
+
+                //Set the shortestWaitingTime initially to the largest integer value
+                int shortestWaitingTime = Integer.MAX_VALUE;
+                int serverWaitingTimeSum = 0;
+
+                //Iterate through all the servers we stored in the serverList
+                for(int i = 0; i < this.serverList.list.size(); i++){
+                    Server server = this.serverList.getServer(i);
+
+                    //Send an LSTJ request to the server
+                    client.sendRequest(String.format("LSTJ %s %d", server.serverType, server.serverID));
+
+                    data = new DATA(client.receiveResponse());
+                    client.sendRequest("OK");
+
+                    //For the records received from DATA response to LSTJ
+                    for(int j = 0; j < data.nRecs; j++){
+                        String[] response = client.receiveResponse();
+
+                        //Sum all of the estimated job runtimes for the current server
+                        serverWaitingTimeSum += Integer.parseInt(response[4]);
+                    }
+
+                    //If the estRuntime sum is smaller than the shortest waiting time
+                    if(serverWaitingTimeSum < shortestWaitingTime){
+                        //Set the server type and id to the current server
+                        this.serverType = server.serverType;
+                        this.serverID = server.serverID;
+                        
+                        //Set the shortest waiting time to the current servers estRuntime sum
+                        shortestWaitingTime = serverWaitingTimeSum;
+                    }
+
+                    //Reset the sum to zero
+                    serverWaitingTimeSum = 0;
+
+                    //If the for loop is NOT on the last iteration, then send OK and receive a response
+                    if(i < this.serverList.list.size() - 1){
+                        client.sendRequest("OK");
+                        client.receiveResponse();
+                    }
+                }
             }
         }
 
-        else {
-            client.sendRequest("OK");
-
+        //Else if the response to GETS Avail is greater than 0
+        else{
             for(int i = 0; i < data.nRecs; i++){
                 String[] response = client.receiveResponse();
                 Server server = new Server(response);
 
-                if((server.core >= latestJob.core) && (!foundFirst)){
+                //Choose the first available server
+                if(i == 0){
                     this.serverType = server.serverType;
                     this.serverID = server.serverID;
-                    this.foundFirst = true;
                 }
             }
         }

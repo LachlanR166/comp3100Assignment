@@ -66,13 +66,17 @@ public class Clientv2 {
         return response.split(" ");
     }
 
+    //Function to control different tasks based on a response
     public void responseController(String[] response) throws IOException{
   
         switch(response[0]){
             
+            //If the response is JOBN, store the latest job in an object and run code based on the selected algorithm
             case "JOBN":
                 this.latestJob = new JOBN(response);
                 switch(this.algorithm.name){
+
+                    //Largest round robin
                     case "lrr":
                         if(!this.hasServerList){
                             this.getServerData("All");
@@ -81,42 +85,29 @@ public class Clientv2 {
                         this.scheduleJob(this.algorithm.lrr.largestServerType, this.algorithm.lrr.nextServerIndex());
                         break;
                     
+                    //First capable
                     case "fc":
                         this.getServerData("Capable");
                         this.scheduleJob(this.algorithm.fc.serverType, this.algorithm.fc.serverID);
                         break;
-                    
-                    case "ff":
+
+                    //Optimised turnaround time
+                    case "ott":
                         this.getServerData("Avail");
 
-                        this.scheduleJob(this.algorithm.ff.serverType, this.algorithm.ff.serverID);
+                        this.scheduleJob(this.algorithm.ott.serverType, this.algorithm.ott.serverID);
                         break;
                     
                     default:
                         break;
                 }
                 break;
-
-            case "JOBP":
-                //TODO
-                break;
-
-            case "JCPL":
-                //TODO
-                break;
-            
-            case "RESF":
-                //TODO
-                break;
-            
-            case "RESR":
-                //TODO
-                break;
                     
             case "NONE":
                 this.closeConnection();
                 break;
 
+            //If the response is DATA then store it in an object and call the code for selected algorithm
             case "DATA":
                 DATA data = new DATA(response);
                 
@@ -132,10 +123,11 @@ public class Clientv2 {
                         this.algorithm.fc = new FC(this, data);
                         break;
                     
-                    case "ff":
-                        this.algorithm.ff = new FF(this, data, latestJob);
+                    //Optimised turnaround time
+                    case "ott":
+                        this.algorithm.ott = new OTT(this, data, latestJob);
                         break;
-                    
+
                     default:
                         break;
                 }
@@ -146,11 +138,13 @@ public class Clientv2 {
             }
     }
 
+    //Function to schedule a job with the server
     public void scheduleJob(String serverType, int serverID) throws IOException{
         this.sendRequest(String.format("SCHD %s %s %s", this.latestJob.jobID, serverType, serverID));
         this.receiveResponse();
     }
 
+    //Function to get server information from ds-server
     public void getServerData(String type) throws IOException{
         if(type.equals("All")){
             this.sendRequest("GETS All");

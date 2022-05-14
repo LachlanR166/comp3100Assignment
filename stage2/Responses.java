@@ -33,14 +33,6 @@ class ServerList {
         }
         return this.largestServer;
     }
-
-    public void printAllServers(){
-        System.out.println("\n================");
-        for(int i = 0; i < this.list.size(); i++){
-            System.out.println(this.list.get(i).toString());
-        }
-        System.out.println("\n================"); 
-    }
 }
 
 //Class for server objects
@@ -80,56 +72,5 @@ class JOBN {
 
     public String toString(){
         return String.format("jobid = %d, jobCores = %d, jobMem = %d, jobDisk = %d", this.jobID, this.core, this.memory, this.disk);
-    }
-}
-
-//Class for JOBP responses
-class JOBP {
-    int submitTime, jobID, estRuntime, core, memory, disk;
-
-    public JOBP(String[] response){
-        this.submitTime = Integer.parseInt(response[1]);
-        this.jobID = Integer.parseInt(response[2]);
-        this.estRuntime = Integer.parseInt(response[3]);
-        this.core = Integer.parseInt(response[4]);
-        this.memory = Integer.parseInt(response[5]);
-        this.disk = Integer.parseInt(response[6]);
-    }
-}
-
-//Class for JCPL responses
-class JCPL {
-    int endTime, jobID, serverID;
-    String serverType;
-
-    public JCPL(String[] response){
-        this.endTime = Integer.parseInt(response[1]);
-        this.jobID = Integer.parseInt(response[2]);
-        this.serverType = response[3];
-        this.serverID = Integer.parseInt(response[4]);
-    }
-}
-
-//Class for RESF responses
-class RESF {
-    int serverID, timeOfFailure;
-    String serverType;
-
-    public RESF(String[] response){
-        this.serverType = response[1];
-        this.serverID = Integer.parseInt(response[2]);
-        this.timeOfFailure = Integer.parseInt(response[3]);
-    }
-}
-
-//Class for RESR responses
-class RESR {
-    int serverID, timeOfRecovery;
-    String serverType;
-
-    public RESR(String[] response){
-        this.serverType = response[1];
-        this.serverID = Integer.parseInt(response[2]);
-        this.timeOfRecovery = Integer.parseInt(response[3]);
     }
 }
