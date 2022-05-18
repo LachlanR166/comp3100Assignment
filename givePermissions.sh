@@ -1,13 +1,9 @@
 #!/bin/bash
 
-chmod +x startClient.sh
+chmod +x runStage2Test.sh
 
-chmod +x startServer.sh
+cd stage2
 
-chmod +x ds-client.sh
-
-cd ds-sim/src/pre-compiled
-
-chmod +x ds-server
-
+chmod +x stage2-test-x86
 chmod +x ds-client
+chmod +x ds-server
